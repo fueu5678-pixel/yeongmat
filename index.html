@@ -616,6 +616,8 @@
         <div class="card">
           <label class="label">이 데이터를 선택한 이유</label>
           <textarea id="reason-text" rows="3" placeholder="이 데이터를 선택한 이유를 작성하세요..."></textarea>
+          <label class="label" style="margin-top:14px;">손실함수 L(a)의 식 직접 작성하기</label>
+          <textarea id="loss-eq-text" rows="2" placeholder="예: L(a) = (1/n)Σ(y - ax)²" style="font-family:var(--mono);"></textarea>
         </div>
       </div>
     </div>
@@ -626,21 +628,21 @@
     <div class="layout-2col">
       <div style="display:flex;flex-direction:column;gap:16px;">
         <div class="card">
-          <div class="section-title">손실함수 (MSE)</div>
+          <div class="section-title">손실함수 L(a)</div>
           <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.7;">
-            기울기 <em style="color:var(--text);">a</em>를 바꾸면서 <strong style="color:var(--accent);">MSE(a)</strong>가 어떻게 변하는지 관찰하세요.<br>
+            기울기 <em style="color:var(--text);">a</em>를 바꾸면서 <strong style="color:var(--accent);">손실 L(a)</strong>가 어떻게 변하는지 관찰하세요.<br>
             손실이 최소가 되는 <em style="color:var(--accent2);">a</em>를 찾는 것이 목표입니다.
           </p>
-          <div class="formula-box" id="loss-formula-display">MSE(a) = …</div>
+          <div class="formula-box" id="loss-formula-display">L(a) = …</div>
         </div>
         <div class="card">
           <div class="param-row">
             <span class="param-name">기울기 a</span>
-            <input type="range" id="a-slider" min="-5" max="5" step="0.01" value="1" style="flex:1;">
+            <input type="range" id="a-slider" min="-10" max="10" step="0.01" value="1" style="flex:1;">
             <span class="param-val" id="a-value">1.00</span>
           </div>
           <div class="param-row">
-            <span class="param-name">MSE</span>
+            <span class="param-name">손실 L</span>
             <div style="flex:1;"></div>
             <span class="param-val" style="color:var(--green);" id="mse-value">0.00</span>
           </div>
@@ -663,9 +665,12 @@
             </div>
             <div>
               <label class="label">학습률 k</label>
-              <input id="gd-lr" type="range" min="0.01" max="1.5" step="0.01" value="0.1">
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input id="gd-lr" type="range" min="0.001" max="1.5" step="0.001" value="0.1" style="flex:1;">
+                <input id="gd-lr-num" type="number" min="0.001" max="1.5" step="0.001" value="0.1" style="width:84px;">
+              </div>
               <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:4px;">
-                <span>0.01</span><span id="gd-lr-val" style="color:var(--accent);">0.10</span><span>1.50</span>
+                <span>0.001</span><span id="gd-lr-val" style="color:var(--accent);">0.100</span><span>1.50</span>
               </div>
             </div>
             <div>
@@ -710,16 +715,29 @@
         <div class="card">
           <div class="section-title">최종 결과</div>
           <div id="final-result">
-            <div class="result-row"><span class="result-label">최적 기울기 a</span><span class="result-val" id="final-a-val">—</span></div>
+            <div class="param-row">
+              <span class="param-name">기울기 a</span>
+              <input type="range" id="final-a-slider" min="-10" max="10" step="0.01" value="1" style="flex:1;">
+              <input type="number" id="final-a-input" step="0.01" value="1" style="width:84px;">
+            </div>
             <div class="result-row"><span class="result-label">추세선 방정식</span><span class="result-val" id="final-eq-val">—</span></div>
-            <div class="result-row"><span class="result-label">최소 MSE</span><span class="result-val green" id="final-mse-val">—</span></div>
+            <div class="result-row"><span class="result-label">손실 L(a)</span><span class="result-val green" id="final-mse-val">—</span></div>
           </div>
+          <button class="btn-sm btn-ghost" style="width:100%;margin-top:12px;" onclick="finalUseOptimal()">↩ 경사하강법 결과값으로 되돌리기</button>
         </div>
       </div>
       <div>
         <div class="card" style="height:100%;">
           <div class="section-title">활동 소감</div>
-          <textarea id="reflection-text" rows="14" placeholder="활동을 통해 배운 점, 느낀 점을 자유롭게 적어보세요...&#10;&#10;예)&#10;- 경사하강법이 어떻게 작동하는지 알게 됐다&#10;- 학습률이 너무 크면 발산함을 확인했다&#10;- ..."></textarea>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+            <p style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;">✔ 반드시 포함할 내용</p>
+            <ul style="font-size:12px;color:var(--text2);line-height:1.8;padding-left:18px;margin:0;">
+              <li>경사하강법에서 <strong style="color:var(--text);">학습률을 설정한 과정</strong> — 어떤 값을, 왜 그렇게 정했는지</li>
+              <li>손실함수로 추세선을 그리는 과정에서의 <strong style="color:var(--text);">문제점과 개선점</strong></li>
+              <li>활동을 통해 새로 알게 된 점·느낀 점</li>
+            </ul>
+          </div>
+          <textarea id="reflection-text" rows="11" placeholder="위 '반드시 포함할 내용'을 모두 담아 작성하세요...&#10;&#10;예)&#10;- 학습률은 처음 0.1로 두니 손실이 발산해서 0.02까지 줄였다&#10;- 추세선이 원점을 지나는 직선이라 절편이 필요한 데이터는 잘 안 맞았다 → 개선점&#10;- ..."></textarea>
         </div>
       </div>
     </div>
@@ -739,6 +757,8 @@ let gdRunning = false;
 let gdRafId = null;
 let gdLastTime = 0;
 let optimalA = null;
+let finalA = 1;
+let finalUserSet = false;
 let cachedCoeffs = null;
 let resizeRafId = null;
 let activeTab = 0;
@@ -757,7 +777,7 @@ function switchTab(idx) {
   if (idx === 0) drawScatter();
   if (idx === 1) { updateLossFormula(); drawLossChart(); }
   if (idx === 2) { if (!gdHistory.length) gdReset(); drawGDGraph(); }
-  if (idx === 3) drawFinalChart();
+  if (idx === 3) finalUseOptimal();
 }
 
 // ─────────────────────────────────────────────
@@ -897,7 +917,7 @@ function updateLossFormula() {
   const {C2,C1,C0} = getLossCoeffs();
   const sign = C1>=0 ? '+' : '';
   document.getElementById('loss-formula-display').textContent =
-    `MSE(a) = ${C2.toFixed(4)}a² ${sign}${C1.toFixed(4)}a + ${C0.toFixed(4)}`;
+    `L(a) = ${C2.toFixed(4)}a² ${sign}${C1.toFixed(4)}a + ${C0.toFixed(4)}`;
 }
 
 function drawLossChart() {
@@ -907,7 +927,7 @@ function drawLossChart() {
     ctx.fillText('먼저 데이터를 입력하세요', W/2, H/2); return;
   }
   const pad = 52;
-  const aMin=-5, aMax=5, steps=200;
+  const aMin=-10, aMax=10, steps=200;
   const losses=[];
   for(let i=0;i<=steps;i++){const a=aMin+(aMax-aMin)*i/steps;losses.push({a,mse:calcMSE(a)});}
   const maxMSE=Math.max(...losses.map(l=>l.mse))||1;
@@ -944,7 +964,7 @@ function drawLossChart() {
   ctx.fillStyle='#5a6478'; ctx.textAlign='center';
   ctx.fillText('a',W/2,H-8);
   ctx.save(); ctx.translate(14,H/2); ctx.rotate(-Math.PI/2);
-  ctx.fillText('MSE',0,0); ctx.restore();
+  ctx.fillText('손실 L',0,0); ctx.restore();
 }
 
 document.getElementById('a-slider').addEventListener('input',()=>{updateLossFormula();drawLossChart();});
@@ -1050,7 +1070,7 @@ function drawGDGraph() {
   const pad=50;
   const {C2,C1}=getLossCoeffs();
   const vertexA=-C1/(2*C2);
-  const xMin=vertexA-5,xMax=vertexA+5;
+  const xMin=vertexA-10,xMax=vertexA+10;
   let yMin=Infinity,yMax=-Infinity;
   for(let i=0;i<=200;i++){const a=xMin+(xMax-xMin)*i/200;const y=calcMSE(a);if(y<yMin)yMin=y;if(y>yMax)yMax=y;}
   const yPad=(yMax-yMin)*0.1||1;yMin-=yPad;yMax+=yPad;
@@ -1098,17 +1118,44 @@ function gdDownloadCSV() {
   URL.revokeObjectURL(url);
 }
 
+function gdSyncLR(val){
+  const v=parseFloat(val);
+  if(isNaN(v)) return;
+  document.getElementById('gd-lr').value=v;
+  document.getElementById('gd-lr-num').value=v;
+  document.getElementById('gd-lr-val').textContent=v.toFixed(3);
+}
 document.getElementById('gd-lr').addEventListener('input',e=>{
-  document.getElementById('gd-lr-val').textContent=parseFloat(e.target.value).toFixed(2);
+  document.getElementById('gd-lr-num').value=parseFloat(e.target.value);
+  document.getElementById('gd-lr-val').textContent=parseFloat(e.target.value).toFixed(3);
 });
+document.getElementById('gd-lr-num').addEventListener('input',e=>gdSyncLR(e.target.value));
+
+document.getElementById('final-a-slider').addEventListener('input',e=>{finalUserSet=true;finalSetA(e.target.value);});
+document.getElementById('final-a-input').addEventListener('input',e=>{finalUserSet=true;finalSetA(e.target.value);});
 
 // ─────────────────────────────────────────────
 //  최종 차트
 // ─────────────────────────────────────────────
+// 경사하강법 결과(또는 마지막 값)를 기본 기울기로 사용
+function finalUseOptimal() {
+  const a=optimalA!==null?optimalA:(gdHistory.length?gdHistory[gdHistory.length-1].a:currentA);
+  finalSetA(a);
+}
+
+// 기울기 a를 설정하고 방정식·손실·그래프를 갱신
+function finalSetA(val) {
+  const v=parseFloat(val);
+  if(isNaN(v)) return;
+  finalA=v;
+  document.getElementById('final-a-input').value=v;
+  document.getElementById('final-a-slider').value=Math.min(Math.max(v,-10),10);
+  drawFinalChart();
+}
+
 function drawFinalChart() {
   const {ctx,W,H}=setupCanvas('final-canvas',380);
-  const a=optimalA!==null?optimalA:(gdHistory.length?gdHistory[gdHistory.length-1].a:currentA);
-  document.getElementById('final-a-val').textContent=a.toFixed(4);
+  const a=finalA;
   document.getElementById('final-eq-val').textContent=`y = ${a.toFixed(4)}x`;
   document.getElementById('final-mse-val').textContent=calcMSE(a).toFixed(4);
   if(!dataPoints.length){
@@ -1161,7 +1208,7 @@ async function captureTabCanvas(tabIdx) {
     if (tabIdx === 0) drawScatter();
     if (tabIdx === 1) { updateLossFormula(); drawLossChart(); }
     if (tabIdx === 2) drawGDGraph();
-    if (tabIdx === 3) drawFinalChart();
+    if (tabIdx === 3) { finalUserSet ? drawFinalChart() : finalUseOptimal(); }
     await new Promise(r => setTimeout(r, 150));
   }
   const canvas = await html2canvas(section, {
