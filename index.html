@@ -1211,11 +1211,26 @@ async function captureTabCanvas(tabIdx) {
     if (tabIdx === 3) { finalUserSet ? drawFinalChart() : finalUseOptimal(); }
     await new Promise(r => setTimeout(r, 150));
   }
+  // 학생이 작성한 글이 길어 박스를 넘쳐도 전부 캡처되도록 textarea를 내용 높이만큼 임시 확장
+  const textareas = section.querySelectorAll('textarea');
+  const saved = [];
+  textareas.forEach(ta => {
+    saved.push({ ta, height: ta.style.height, overflow: ta.style.overflow });
+    ta.style.overflow = 'hidden';
+    ta.style.height = 'auto';
+    ta.style.height = (ta.scrollHeight + 4) + 'px';
+  });
+  await new Promise(r => setTimeout(r, 30));
   const canvas = await html2canvas(section, {
     backgroundColor: '#f7f8fb',
     scale: 2,
     useCORS: true,
     logging: false
+  });
+  // 원래 크기로 복구
+  saved.forEach(({ ta, height, overflow }) => {
+    ta.style.height = height;
+    ta.style.overflow = overflow;
   });
   if (wasHidden) section.classList.remove('active');
   return canvas;
