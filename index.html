@@ -1,0 +1,1328 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>경사하강법으로 추세선 찾기</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --surface: #ffffff;
+      --surface2: #f1f3f8;
+      --border: #e2e6ee;
+      --accent: #5b6af5;
+      --accent2: #f59e0b;
+      --green: #10b981;
+      --red: #ef4444;
+      --text: #1e2230;
+      --text2: #5a6478;
+      --text3: #94a3b8;
+      --mono: 'Space Mono', monospace;
+      --sans: 'Noto Sans KR', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── 헤더 ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+
+    .logo-text {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-outline, .btn-solid {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: var(--sans);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover { background: var(--surface2); color: var(--text); border-color: #c5cdd9; }
+
+    .btn-solid {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+    }
+    .btn-solid:hover { background: #4a5ae0; }
+    .btn-solid:disabled { background: var(--text3); cursor: not-allowed; }
+
+    /* ── 탭 ── */
+    .tabs-nav {
+      display: flex;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      gap: 0;
+    }
+
+    .tab-btn {
+      padding: 12px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text3);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      font-family: var(--sans);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn:hover { color: var(--text2); }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      font-weight: 700;
+    }
+
+    .tab-num {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--surface2);
+      font-size: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono);
+    }
+
+    .tab-btn.active .tab-num {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* ── 메인 ── */
+    main { max-width: 1300px; margin: 0 auto; padding: 24px; }
+
+    section.tab-section { display: none; }
+    section.tab-section.active { display: block; }
+
+    /* ── 카드 ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+    }
+
+    .card-sm {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+    }
+
+    /* ── 레이아웃 ── */
+    .layout-2col {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .layout-2col { grid-template-columns: 1fr; }
+    }
+
+    /* ── 제목 ── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text2);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::before {
+      content: '';
+      display: block;
+      width: 3px; height: 14px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    /* ── 입력 ── */
+    input[type="number"], input[type="text"], textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 13px;
+      padding: 8px 12px;
+      width: 100%;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+
+    input[type="number"]:focus, input[type="text"]:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    textarea { resize: none; }
+
+    /* ── 슬라이더 ── */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      background: var(--accent2);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+    /* ── 테이블 ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .data-table thead th {
+      background: var(--surface2);
+      color: var(--text2);
+      font-weight: 600;
+      padding: 6px 10px;
+      text-align: left;
+      position: sticky; top: 0;
+    }
+
+    .data-table tbody tr { border-top: 1px solid var(--border); }
+    .data-table tbody tr:hover { background: var(--surface2); }
+    .data-table td { padding: 5px 10px; color: var(--text); font-family: var(--mono); font-size: 11px; }
+
+    .table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; max-height: 200px; overflow-y: auto; }
+
+    /* ── 버튼 그룹 ── */
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .btn-sm {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: var(--sans);
+      border: none;
+    }
+
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #4a5ae0; }
+
+    .btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--border); color: var(--text); }
+
+    .btn-danger { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+    .btn-green { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+    .btn-green:hover { background: rgba(16,185,129,0.25); }
+
+    /* ── 캔버스 ── */
+    canvas {
+      display: block;
+      width: 100%;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── 상태 배지 ── */
+    .status-box {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: var(--mono);
+    }
+
+    .status-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #34d399; }
+    .status-warning { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; }
+
+    /* ── 폼 입력줄 ── */
+    .inline-form { display: flex; gap: 6px; align-items: center; }
+    .inline-form input[type="number"] { width: 70px; }
+
+    /* ── 라벨 ── */
+    .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text3);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    /* ── 수식 박스 ── */
+    .formula-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--green);
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── 결과 패널 ── */
+    .result-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-label { font-size: 12px; color: var(--text2); flex: 1; }
+    .result-val { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--accent); }
+    .result-val.green { color: var(--green); }
+
+    /* ── 분리선 ── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+    /* ── 스크롤바 ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── 파라미터 행 ── */
+    .param-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .param-row:last-child { border-bottom: none; }
+    .param-name { font-size: 12px; color: var(--text2); width: 80px; shrink: 0; font-family: var(--mono); }
+    .param-val { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent2); min-width: 44px; text-align: right; }
+
+    /* ── 애니메이션 ── */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .tab-section.active { animation: fadeIn 0.2s ease; }
+
+    /* ── 인트로 모달 ── */
+    .intro-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at top, #eef1f8 0%, #f7f8fb 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .intro-overlay.hidden { display: none; }
+
+    .intro-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px 36px;
+      box-shadow: 0 20px 60px rgba(15,23,42,0.12);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .intro-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2), var(--green));
+    }
+
+    .intro-logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .intro-logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), #4a5ae0);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(91,106,245,0.35);
+    }
+
+    .intro-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .intro-sub {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 2px;
+    }
+
+    .intro-desc {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.7;
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .intro-field {
+      margin-bottom: 18px;
+    }
+
+    .intro-field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+
+    .intro-field input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: var(--sans);
+      transition: border-color 0.15s, background 0.15s;
+      outline: none;
+    }
+
+    .intro-field input:focus {
+      border-color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(91,106,245,0.12);
+    }
+
+    .intro-start-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: var(--sans);
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-top: 8px;
+      letter-spacing: 0.02em;
+    }
+
+    .intro-start-btn:hover { background: #4a5ae0; transform: translateY(-1px); box-shadow: 0 8px 20px rgba(91,106,245,0.3); }
+    .intro-start-btn:disabled { background: var(--text3); cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── 학생 정보 배지 ── */
+    .student-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--text2);
+      margin-right: 4px;
+    }
+
+    .student-badge strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .student-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(16,185,129,0.6);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── 인트로 모달 ─── -->
+<div id="intro-overlay" class="intro-overlay">
+  <div class="intro-card">
+    <div class="intro-logo">
+      <div class="intro-logo-icon">∇</div>
+      <div>
+        <div class="intro-title">경사하강법으로 추세선 찾기</div>
+        <div class="intro-sub">Gradient Descent Learning Activity</div>
+      </div>
+    </div>
+    <p class="intro-desc">
+      산점도에서 손실함수, 경사하강법까지 단계별로 추세선을 찾아보는 활동입니다.<br>
+      시작하기 전에 학번과 이름을 입력해 주세요.
+    </p>
+    <form id="intro-form">
+      <div class="intro-field">
+        <label for="student-id">학번</label>
+        <input type="text" id="student-id" placeholder="예: 10215" autocomplete="off" required>
+      </div>
+      <div class="intro-field">
+        <label for="student-name">이름</label>
+        <input type="text" id="student-name" placeholder="홍길동" autocomplete="off" required>
+      </div>
+      <button type="submit" class="intro-start-btn">활동 시작하기 →</button>
+    </form>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">∇</div>
+    <span class="logo-text">경사하강법으로 추세선 찾기</span>
+  </div>
+  <div class="header-actions">
+    <div class="student-badge" id="student-badge" style="display:none;">
+      <span class="dot"></span>
+      <strong id="badge-name">—</strong>
+      <span id="badge-id">—</span>
+    </div>
+    <button class="btn-outline" onclick="saveCurrentTab()">📷 현재 탭 저장</button>
+    <button class="btn-solid" id="save-all-btn" onclick="saveAllTabs()">⬇ 전체 저장</button>
+  </div>
+</header>
+
+<nav class="tabs-nav">
+  <button class="tab-btn active" onclick="switchTab(0)"><span class="tab-num">1</span>산점도</button>
+  <button class="tab-btn" onclick="switchTab(1)"><span class="tab-num">2</span>손실함수</button>
+  <button class="tab-btn" onclick="switchTab(2)"><span class="tab-num">3</span>경사하강법</button>
+  <button class="tab-btn" onclick="switchTab(3)"><span class="tab-num">4</span>추세선 결정</button>
+</nav>
+
+<main>
+
+  <!-- ─── 탭 0: 산점도 ─── -->
+  <section id="tab-0" class="tab-section active">
+    <div class="layout-2col">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="card">
+          <div class="section-title">데이터 입력</div>
+          <div class="btn-group" style="margin-bottom:12px;">
+            <button class="btn-sm btn-primary" onclick="loadExample()">예시 데이터</button>
+            <button class="btn-sm btn-danger" onclick="clearData()">초기화</button>
+          </div>
+          <div class="table-wrap" style="margin-bottom:12px;">
+            <table class="data-table">
+              <thead><tr><th>x</th><th>y</th><th></th></tr></thead>
+              <tbody id="data-body"></tbody>
+            </table>
+          </div>
+          <form id="add-form" class="inline-form" style="margin-bottom:10px;">
+            <input id="input-x" type="number" step="any" placeholder="x">
+            <input id="input-y" type="number" step="any" placeholder="y">
+            <button type="submit" class="btn-sm btn-primary" style="padding:6px 10px;white-space:nowrap;">+ 추가</button>
+          </form>
+          <label class="label">CSV 붙여넣기 (한 줄에 x,y)</label>
+          <textarea id="paste-area" rows="3" style="margin-bottom:8px;font-family:var(--mono);font-size:11px;" placeholder="1,2.2&#10;2,3.8&#10;3,6.5"></textarea>
+          <button onclick="pasteCSV()" class="btn-sm btn-green" style="width:100%;">CSV 추가</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <canvas id="scatter-canvas" style="height:380px;"></canvas>
+        <div class="card">
+          <label class="label">이 데이터를 선택한 이유</label>
+          <textarea id="reason-text" rows="3" placeholder="이 데이터를 선택한 이유를 작성하세요..."></textarea>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 탭 1: 손실함수 ─── -->
+  <section id="tab-1" class="tab-section">
+    <div class="layout-2col">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="card">
+          <div class="section-title">손실함수 (MSE)</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.7;">
+            기울기 <em style="color:var(--text);">a</em>를 바꾸면서 <strong style="color:var(--accent);">MSE(a)</strong>가 어떻게 변하는지 관찰하세요.<br>
+            손실이 최소가 되는 <em style="color:var(--accent2);">a</em>를 찾는 것이 목표입니다.
+          </p>
+          <div class="formula-box" id="loss-formula-display">MSE(a) = …</div>
+        </div>
+        <div class="card">
+          <div class="param-row">
+            <span class="param-name">기울기 a</span>
+            <input type="range" id="a-slider" min="-5" max="5" step="0.01" value="1" style="flex:1;">
+            <span class="param-val" id="a-value">1.00</span>
+          </div>
+          <div class="param-row">
+            <span class="param-name">MSE</span>
+            <div style="flex:1;"></div>
+            <span class="param-val" style="color:var(--green);" id="mse-value">0.00</span>
+          </div>
+        </div>
+      </div>
+      <canvas id="loss-canvas" style="height:380px;"></canvas>
+    </div>
+  </section>
+
+  <!-- ─── 탭 2: 경사하강법 ─── -->
+  <section id="tab-2" class="tab-section">
+    <div class="layout-2col">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="card">
+          <div class="section-title">하이퍼파라미터</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <label class="label" for="gd-a0">초깃값 a₀</label>
+              <input id="gd-a0" type="number" value="-2" step="0.1">
+            </div>
+            <div>
+              <label class="label">학습률 k</label>
+              <input id="gd-lr" type="range" min="0.01" max="1.5" step="0.01" value="0.1">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:4px;">
+                <span>0.01</span><span id="gd-lr-val" style="color:var(--accent);">0.10</span><span>1.50</span>
+              </div>
+            </div>
+            <div>
+              <label class="label" for="gd-eps">임계값 ε</label>
+              <input id="gd-eps" type="number" value="0.001" step="0.001" min="0.0001">
+            </div>
+            <div>
+              <label class="label" for="gd-maxn">최대 반복 N</label>
+              <input id="gd-maxn" type="number" value="100" min="1" max="500">
+            </div>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button id="gd-step-btn" class="btn-sm btn-primary" onclick="gdStep()">⏭ 1 스텝</button>
+          <button id="gd-auto-btn" class="btn-sm btn-ghost" onclick="gdToggleAuto()">▶ 자동</button>
+          <button class="btn-sm btn-danger" onclick="gdReset()">↺ 초기화</button>
+          <button class="btn-sm btn-green" onclick="gdDownloadCSV()">⬇ CSV</button>
+        </div>
+        <div id="gd-status" style="display:none;" class="status-box status-success"></div>
+        <div id="gd-warning" style="display:none;" class="status-box status-warning"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <canvas id="gd-canvas" style="height:300px;"></canvas>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;">반복 기록</div>
+          <div style="overflow:auto;max-height:200px;">
+            <table class="data-table">
+              <thead><tr><th>회차</th><th>aₙ</th><th>L′(aₙ)</th><th>L(aₙ)</th></tr></thead>
+              <tbody id="gd-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 탭 3: 추세선 결정 ─── -->
+  <section id="tab-3" class="tab-section">
+    <div class="layout-2col">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <canvas id="final-canvas" style="height:380px;"></canvas>
+        <div class="card">
+          <div class="section-title">최종 결과</div>
+          <div id="final-result">
+            <div class="result-row"><span class="result-label">최적 기울기 a</span><span class="result-val" id="final-a-val">—</span></div>
+            <div class="result-row"><span class="result-label">추세선 방정식</span><span class="result-val" id="final-eq-val">—</span></div>
+            <div class="result-row"><span class="result-label">최소 MSE</span><span class="result-val green" id="final-mse-val">—</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="height:100%;">
+          <div class="section-title">활동 소감</div>
+          <textarea id="reflection-text" rows="14" placeholder="활동을 통해 배운 점, 느낀 점을 자유롭게 적어보세요...&#10;&#10;예)&#10;- 경사하강법이 어떻게 작동하는지 알게 됐다&#10;- 학습률이 너무 크면 발산함을 확인했다&#10;- ..."></textarea>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+// ─────────────────────────────────────────────
+//  전역 상태
+// ─────────────────────────────────────────────
+let dataPoints = [];
+let currentA = 1;
+let gdHistory = [];
+let gdRunning = false;
+let gdRafId = null;
+let gdLastTime = 0;
+let optimalA = null;
+let cachedCoeffs = null;
+let resizeRafId = null;
+let activeTab = 0;
+
+const exampleData = [[1,2.2],[2,3.8],[3,6.5],[4,7.9],[5,10.1],[6,12.8],[7,13.5],[8,16.2]];
+
+// ─────────────────────────────────────────────
+//  탭 전환
+// ─────────────────────────────────────────────
+function switchTab(idx) {
+  activeTab = idx;
+  document.querySelectorAll('.tabs-nav .tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  document.querySelectorAll('.tab-section').forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+  });
+  if (idx === 0) drawScatter();
+  if (idx === 1) { updateLossFormula(); drawLossChart(); }
+  if (idx === 2) { if (!gdHistory.length) gdReset(); drawGDGraph(); }
+  if (idx === 3) drawFinalChart();
+}
+
+// ─────────────────────────────────────────────
+//  데이터 관리
+// ─────────────────────────────────────────────
+function invalidateCoeffs() { cachedCoeffs = null; }
+
+function loadExample() { dataPoints = exampleData.map(([x,y]) => ({x,y})); invalidateCoeffs(); renderData(); }
+function clearData() { dataPoints = []; optimalA = null; invalidateCoeffs(); renderData(); }
+
+function pasteCSV() {
+  const text = document.getElementById('paste-area').value.trim();
+  if (!text) return;
+  text.split('\n').forEach(line => {
+    const parts = line.trim().split(/[,\t]/);
+    if (parts.length === 2) {
+      const x = parseFloat(parts[0]), y = parseFloat(parts[1]);
+      if (!isNaN(x) && !isNaN(y)) dataPoints.push({x,y});
+    }
+  });
+  document.getElementById('paste-area').value = '';
+  invalidateCoeffs(); renderData();
+}
+
+document.getElementById('add-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const x = parseFloat(document.getElementById('input-x').value);
+  const y = parseFloat(document.getElementById('input-y').value);
+  if (isNaN(x) || isNaN(y)) return;
+  dataPoints.push({x,y});
+  document.getElementById('input-x').value = '';
+  document.getElementById('input-y').value = '';
+  invalidateCoeffs(); renderData();
+});
+
+function removePoint(i) { dataPoints.splice(i,1); invalidateCoeffs(); renderData(); }
+
+function renderData() {
+  const tbody = document.getElementById('data-body');
+  tbody.innerHTML = dataPoints.map((p,i) =>
+    `<tr><td>${p.x}</td><td>${p.y}</td><td><button onclick="removePoint(${i})" style="color:var(--red);background:none;border:none;cursor:pointer;font-size:14px;padding:0 4px;">×</button></td></tr>`
+  ).join('');
+  drawScatter();
+}
+
+function calcMSE(a) {
+  if (!dataPoints.length) return 0;
+  return dataPoints.reduce((s,p) => s + (p.y - a*p.x)**2, 0) / dataPoints.length;
+}
+
+function getLossCoeffs() {
+  if (cachedCoeffs) return cachedCoeffs;
+  const n = dataPoints.length;
+  if (!n) return {C2:1,C1:0,C0:0};
+  let sx2=0,sxy=0,sy2=0;
+  dataPoints.forEach(p => { sx2+=p.x*p.x; sxy+=p.x*p.y; sy2+=p.y*p.y; });
+  cachedCoeffs = {C2:sx2/n, C1:-2*sxy/n, C0:sy2/n};
+  return cachedCoeffs;
+}
+
+// ─────────────────────────────────────────────
+//  캔버스 공통 유틸
+// ─────────────────────────────────────────────
+function setupCanvas(id, h) {
+  const canvas = document.getElementById(id);
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width || 600;
+  const H = h || rect.height || 380;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,W,H);
+  return {ctx, W, H};
+}
+
+function drawAxes(ctx, W, H, pad, xMin, xMax, yMin, yMax) {
+  // 그리드
+  ctx.strokeStyle = 'rgba(226,230,238,0.8)';
+  ctx.lineWidth = 1;
+  for (let i=1; i<5; i++) {
+    const y = pad + (H-2*pad)/5*i;
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
+    const x = pad + (W-2*pad)/5*i;
+    ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,H-pad); ctx.stroke();
+  }
+  // 축
+  ctx.strokeStyle = '#c5cdd9'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pad,H-pad); ctx.lineTo(W-pad,H-pad); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad,pad); ctx.lineTo(pad,H-pad); ctx.stroke();
+  // 레이블
+  ctx.fillStyle = '#94a3b8'; ctx.font = '11px Space Mono,monospace'; ctx.textAlign='center';
+  const toX = v => pad + (v-xMin)/(xMax-xMin)*(W-2*pad);
+  const toY = v => H-pad - (v-yMin)/(yMax-yMin)*(H-2*pad);
+  // 눈금
+  for (let i=0; i<=4; i++) {
+    const xv = xMin + (xMax-xMin)/4*i;
+    const yv = yMin + (yMax-yMin)/4*i;
+    ctx.textAlign='center';
+    ctx.fillText(xv.toFixed(1), toX(xv), H-pad+14);
+    ctx.textAlign='right';
+    ctx.fillText(yv.toFixed(1), pad-6, toY(yv)+4);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  산점도
+// ─────────────────────────────────────────────
+function drawScatter() {
+  const {ctx,W,H} = setupCanvas('scatter-canvas', 380);
+  if (!dataPoints.length) {
+    ctx.fillStyle = '#94a3b8'; ctx.font = '14px Noto Sans KR,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('데이터를 입력하거나 예시 데이터를 불러오세요', W/2, H/2);
+    return;
+  }
+  const pad = 50;
+  const xs = dataPoints.map(p=>p.x), ys = dataPoints.map(p=>p.y);
+  const xMin = Math.min(0,...xs), xMax = (Math.max(...xs)||1)*1.1;
+  const yMin = Math.min(0,...ys), yMax = (Math.max(...ys)||1)*1.15;
+  const toX = v => pad+(v-xMin)/(xMax-xMin)*(W-2*pad);
+  const toY = v => H-pad-(v-yMin)/(yMax-yMin)*(H-2*pad);
+  drawAxes(ctx,W,H,pad,xMin,xMax,yMin,yMax);
+  // 점
+  dataPoints.forEach(p => {
+    ctx.beginPath(); ctx.arc(toX(p.x),toY(p.y),6,0,Math.PI*2);
+    ctx.fillStyle = '#5b6af5'; ctx.fill();
+    ctx.strokeStyle = 'rgba(91,106,245,0.4)'; ctx.lineWidth=3; ctx.stroke();
+  });
+}
+
+// ─────────────────────────────────────────────
+//  손실함수
+// ─────────────────────────────────────────────
+function updateLossFormula() {
+  const {C2,C1,C0} = getLossCoeffs();
+  const sign = C1>=0 ? '+' : '';
+  document.getElementById('loss-formula-display').textContent =
+    `MSE(a) = ${C2.toFixed(4)}a² ${sign}${C1.toFixed(4)}a + ${C0.toFixed(4)}`;
+}
+
+function drawLossChart() {
+  const {ctx,W,H} = setupCanvas('loss-canvas', 380);
+  if (!dataPoints.length) {
+    ctx.fillStyle='#94a3b8'; ctx.font='14px Noto Sans KR,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('먼저 데이터를 입력하세요', W/2, H/2); return;
+  }
+  const pad = 52;
+  const aMin=-5, aMax=5, steps=200;
+  const losses=[];
+  for(let i=0;i<=steps;i++){const a=aMin+(aMax-aMin)*i/steps;losses.push({a,mse:calcMSE(a)});}
+  const maxMSE=Math.max(...losses.map(l=>l.mse))||1;
+  const toX=a=>pad+(a-aMin)/(aMax-aMin)*(W-2*pad);
+  const toY=m=>H-pad-(m/maxMSE)*(H-2*pad);
+  // 그리드
+  ctx.strokeStyle='rgba(226,230,238,0.8)'; ctx.lineWidth=1;
+  for(let i=1;i<5;i++){
+    const y=pad+(H-2*pad)/5*i; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
+  }
+  ctx.strokeStyle='#c5cdd9'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(pad,H-pad); ctx.lineTo(W-pad,H-pad); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad,pad); ctx.lineTo(pad,H-pad); ctx.stroke();
+  // 곡선
+  ctx.beginPath(); ctx.strokeStyle='#10b981'; ctx.lineWidth=2.5;
+  losses.forEach((l,i)=>{i===0?ctx.moveTo(toX(l.a),toY(l.mse)):ctx.lineTo(toX(l.a),toY(l.mse));});
+  ctx.stroke();
+  // 현재 점
+  currentA = parseFloat(document.getElementById('a-slider').value);
+  document.getElementById('a-value').textContent = currentA.toFixed(2);
+  const mse = calcMSE(currentA);
+  document.getElementById('mse-value').textContent = mse.toFixed(4);
+  // 강조 원
+  ctx.beginPath(); ctx.arc(toX(currentA),toY(mse),9,0,Math.PI*2);
+  ctx.fillStyle='rgba(245,158,11,0.2)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(toX(currentA),toY(mse),5,0,Math.PI*2);
+  ctx.fillStyle='#f59e0b'; ctx.fill();
+  // 레이블
+  ctx.fillStyle='#94a3b8'; ctx.font='11px Space Mono,monospace'; ctx.textAlign='center';
+  for(let i=0;i<=4;i++){
+    const av=aMin+(aMax-aMin)/4*i;
+    ctx.fillText(av.toFixed(1),toX(av),H-pad+14);
+  }
+  ctx.fillStyle='#5a6478'; ctx.textAlign='center';
+  ctx.fillText('a',W/2,H-8);
+  ctx.save(); ctx.translate(14,H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('MSE',0,0); ctx.restore();
+}
+
+document.getElementById('a-slider').addEventListener('input',()=>{updateLossFormula();drawLossChart();});
+
+// ─────────────────────────────────────────────
+//  경사하강법
+// ─────────────────────────────────────────────
+function gdGetParams() {
+  return {
+    a0: parseFloat(document.getElementById('gd-a0').value)||0,
+    lr: parseFloat(document.getElementById('gd-lr').value)||0.1,
+    eps: parseFloat(document.getElementById('gd-eps').value)||0.001,
+    maxN: parseInt(document.getElementById('gd-maxn').value)||100
+  };
+}
+
+function gdCompute(a) {
+  const n=dataPoints.length;
+  if(!n) return {dL:0,L:0};
+  let sx2=0,sxy=0,sy2=0;
+  dataPoints.forEach(p=>{sx2+=p.x*p.x;sxy+=p.x*p.y;sy2+=p.y*p.y;});
+  const L=(sx2*a*a-2*sxy*a+sy2)/n;
+  const dL=2*sx2/n*a-2*sxy/n;
+  return {dL,L};
+}
+
+function gdReset() {
+  gdStopAuto();
+  gdHistory=[];
+  const {a0}=gdGetParams();
+  const {dL,L}=gdCompute(a0);
+  gdHistory.push({n:0,a:a0,dL,L});
+  document.getElementById('gd-status').style.display='none';
+  document.getElementById('gd-warning').style.display='none';
+  gdRebuildTable();
+  drawGDGraph();
+}
+
+function gdRebuildTable() {
+  const tbody=document.getElementById('gd-tbody');
+  tbody.innerHTML='';
+  gdHistory.forEach(h=>gdAppendTableRow(h));
+}
+
+function gdAppendTableRow(h) {
+  const tbody=document.getElementById('gd-tbody');
+  const tr=document.createElement('tr');
+  tr.innerHTML=
+    `<td>${h.n}</td><td>${h.a.toFixed(5)}</td><td>${h.dL.toFixed(5)}</td><td>${h.L.toFixed(5)}</td>`;
+  tbody.appendChild(tr);
+  tbody.parentElement.scrollTop=tbody.parentElement.scrollHeight;
+}
+
+function gdStep() {
+  if(!dataPoints.length) return false;
+  const {lr,eps,maxN}=gdGetParams();
+  const last=gdHistory[gdHistory.length-1];
+  if(last.n>=maxN){gdShowStatus(`최대 반복 횟수(${maxN}) 도달`);gdStopAuto();return false;}
+  if(Math.abs(last.dL)<eps){gdShowStatus(`수렴 완료! |L′|=${Math.abs(last.dL).toFixed(6)} < ε`);gdStopAuto();return false;}
+  const newA=last.a-lr*last.dL;
+  if(Math.abs(newA)>100){gdShowWarning('발산 감지. 학습률을 줄여보세요.');gdStopAuto();return false;}
+  const {dL,L}=gdCompute(newA);
+  const entry={n:last.n+1,a:newA,dL,L};
+  gdHistory.push(entry);
+  gdAppendTableRow(entry);
+  if(Math.abs(entry.dL)<eps){gdShowStatus('수렴 완료!');gdStopAuto();optimalA=entry.a;}
+  if(entry.n>=maxN){gdShowStatus('최대 반복 도달');gdStopAuto();optimalA=entry.a;}
+  drawGDGraph();
+  return true;
+}
+
+function gdToggleAuto(){gdRunning?gdStopAuto():gdStartAuto();}
+
+function gdAutoLoop(ts) {
+  if(ts-gdLastTime>=180){gdLastTime=ts;if(!gdStep())return;}
+  gdRafId=requestAnimationFrame(gdAutoLoop);
+}
+
+function gdStartAuto() {
+  gdRunning=true;gdLastTime=0;
+  document.getElementById('gd-auto-btn').textContent='⏸ 정지';
+  gdRafId=requestAnimationFrame(gdAutoLoop);
+}
+
+function gdStopAuto() {
+  gdRunning=false;
+  document.getElementById('gd-auto-btn').textContent='▶ 자동';
+  if(gdRafId){cancelAnimationFrame(gdRafId);gdRafId=null;}
+  if(gdHistory.length>1) optimalA=gdHistory[gdHistory.length-1].a;
+}
+
+function gdShowStatus(msg){
+  const el=document.getElementById('gd-status');el.textContent=msg;el.style.display='block';
+}
+function gdShowWarning(msg){
+  const el=document.getElementById('gd-warning');el.textContent=msg;el.style.display='block';
+}
+
+function drawGDGraph() {
+  const {ctx,W,H}=setupCanvas('gd-canvas',300);
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+  if(!dataPoints.length) return;
+  const pad=50;
+  const {C2,C1}=getLossCoeffs();
+  const vertexA=-C1/(2*C2);
+  const xMin=vertexA-5,xMax=vertexA+5;
+  let yMin=Infinity,yMax=-Infinity;
+  for(let i=0;i<=200;i++){const a=xMin+(xMax-xMin)*i/200;const y=calcMSE(a);if(y<yMin)yMin=y;if(y>yMax)yMax=y;}
+  const yPad=(yMax-yMin)*0.1||1;yMin-=yPad;yMax+=yPad;
+  const toX=a=>pad+(a-xMin)/(xMax-xMin)*(W-2*pad);
+  const toY=v=>H-pad-(v-yMin)/(yMax-yMin)*(H-2*pad);
+  // 그리드
+  ctx.strokeStyle='rgba(226,230,238,0.8)';ctx.lineWidth=1;
+  for(let i=1;i<5;i++){const y=pad+(H-2*pad)/5*i;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  // 곡선
+  ctx.beginPath();ctx.strokeStyle='#5b6af5';ctx.lineWidth=2.5;
+  for(let i=0;i<=200;i++){
+    const a=xMin+(xMax-xMin)*i/200;
+    i===0?ctx.moveTo(toX(a),toY(calcMSE(a))):ctx.lineTo(toX(a),toY(calcMSE(a)));
+  }
+  ctx.stroke();
+  // 경로
+  if(gdHistory.length>1){
+    ctx.beginPath();ctx.strokeStyle='rgba(91,106,245,0.5)';ctx.lineWidth=1.5;
+    gdHistory.forEach((h,i)=>{i===0?ctx.moveTo(toX(h.a),toY(h.L)):ctx.lineTo(toX(h.a),toY(h.L));});
+    ctx.stroke();
+    gdHistory.slice(0,-1).forEach(h=>{
+      ctx.beginPath();ctx.arc(toX(h.a),toY(h.L),3,0,Math.PI*2);
+      ctx.fillStyle='#a5b4fc';ctx.fill();
+    });
+  }
+  // 현재 점
+  const cur=gdHistory[gdHistory.length-1];
+  ctx.beginPath();ctx.arc(toX(cur.a),toY(cur.L),8,0,Math.PI*2);
+  ctx.fillStyle='rgba(239,68,68,0.2)';ctx.fill();
+  ctx.beginPath();ctx.arc(toX(cur.a),toY(cur.L),5,0,Math.PI*2);
+  ctx.fillStyle='#ef4444';ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.fillStyle='#1e2230';ctx.font='11px Space Mono,monospace';ctx.textAlign='left';
+  ctx.fillText(`a=${cur.a.toFixed(3)}, L=${cur.L.toFixed(3)}`,toX(cur.a)+12,toY(cur.L)-8);
+}
+
+function gdDownloadCSV() {
+  if(!gdHistory.length) return;
+  let csv='회차,a_n,L_prime,L\n';
+  gdHistory.forEach(h=>{csv+=`${h.n},${h.a},${h.dL},${h.L}\n`;});
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='gradient_descent.csv';a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('gd-lr').addEventListener('input',e=>{
+  document.getElementById('gd-lr-val').textContent=parseFloat(e.target.value).toFixed(2);
+});
+
+// ─────────────────────────────────────────────
+//  최종 차트
+// ─────────────────────────────────────────────
+function drawFinalChart() {
+  const {ctx,W,H}=setupCanvas('final-canvas',380);
+  const a=optimalA!==null?optimalA:(gdHistory.length?gdHistory[gdHistory.length-1].a:currentA);
+  document.getElementById('final-a-val').textContent=a.toFixed(4);
+  document.getElementById('final-eq-val').textContent=`y = ${a.toFixed(4)}x`;
+  document.getElementById('final-mse-val').textContent=calcMSE(a).toFixed(4);
+  if(!dataPoints.length){
+    ctx.fillStyle='#94a3b8';ctx.font='14px Noto Sans KR,sans-serif';ctx.textAlign='center';
+    ctx.fillText('데이터가 없습니다',W/2,H/2);return;
+  }
+  const pad=52;
+  const xs=dataPoints.map(p=>p.x),ys=dataPoints.map(p=>p.y);
+  let xMin=Math.min(0,...xs),xMax=(Math.max(...xs)||1)*1.1;
+  let yMin=Math.min(0,...ys,a*xMin,a*xMax);
+  let yMax=Math.max(...ys,a*xMin,a*xMax)*1.15||1;
+  if(yMin===yMax){yMin-=1;yMax+=1;}
+  const toX=v=>pad+(v-xMin)/(xMax-xMin)*(W-2*pad);
+  const toY=v=>H-pad-(v-yMin)/(yMax-yMin)*(H-2*pad);
+  drawAxes(ctx,W,H,pad,xMin,xMax,yMin,yMax);
+  // 잔차선
+  ctx.strokeStyle='rgba(239,68,68,0.25)';ctx.lineWidth=1.5;
+  dataPoints.forEach(p=>{
+    ctx.beginPath();ctx.moveTo(toX(p.x),toY(p.y));ctx.lineTo(toX(p.x),toY(a*p.x));ctx.stroke();
+  });
+  // 추세선
+  ctx.beginPath();ctx.strokeStyle='#f59e0b';ctx.lineWidth=3;
+  ctx.shadowColor='rgba(245,158,11,0.4)';ctx.shadowBlur=8;
+  ctx.moveTo(toX(xMin),toY(a*xMin));ctx.lineTo(toX(xMax),toY(a*xMax));
+  ctx.stroke();ctx.shadowBlur=0;
+  // 점
+  dataPoints.forEach(p=>{
+    ctx.beginPath();ctx.arc(toX(p.x),toY(p.y),6,0,Math.PI*2);
+    ctx.fillStyle='#5b6af5';ctx.fill();
+    ctx.strokeStyle='rgba(91,106,245,0.35)';ctx.lineWidth=3;ctx.stroke();
+  });
+  // 방정식 레이블
+  ctx.fillStyle='#f59e0b';ctx.font='bold 13px Space Mono,monospace';ctx.textAlign='left';
+  ctx.fillText(`y = ${a.toFixed(3)}x`,toX(xMax*0.55)+4,toY(a*xMax*0.55)-12);
+}
+
+// ─────────────────────────────────────────────
+//  저장 — 4탭을 한 이미지로 합치기
+// ─────────────────────────────────────────────
+const TAB_NAMES = ['1. 산점도', '2. 손실함수', '3. 경사하강법', '4. 추세선 결정'];
+
+let studentInfo = { id: '', name: '' };
+
+// 특정 탭을 캔버스로 캡처 (숨겨진 탭도 임시로 보이게 한 후 캡처)
+async function captureTabCanvas(tabIdx) {
+  const section = document.getElementById('tab-' + tabIdx);
+  const wasHidden = !section.classList.contains('active');
+  if (wasHidden) {
+    section.classList.add('active');
+    if (tabIdx === 0) drawScatter();
+    if (tabIdx === 1) { updateLossFormula(); drawLossChart(); }
+    if (tabIdx === 2) drawGDGraph();
+    if (tabIdx === 3) drawFinalChart();
+    await new Promise(r => setTimeout(r, 150));
+  }
+  const canvas = await html2canvas(section, {
+    backgroundColor: '#f7f8fb',
+    scale: 2,
+    useCORS: true,
+    logging: false
+  });
+  if (wasHidden) section.classList.remove('active');
+  return canvas;
+}
+
+// 학생 정보 + 탭 제목 + 캡처 이미지를 묶은 PNG 생성
+function buildCompositeImage(tabCanvases, tabLabels) {
+  const scale = 2;
+  const headerH = 80 * scale;
+  const labelH = 36 * scale;
+  const gap = 16 * scale;
+  const pad = 24 * scale;
+
+  // 가장 큰 너비에 맞춤
+  const maxW = Math.max(...tabCanvases.map(c => c.width));
+  const totalContentH = tabCanvases.reduce((s, c) => s + c.height + labelH, 0) + gap * (tabCanvases.length - 1);
+  const totalW = maxW + pad * 2;
+  const totalH = headerH + pad + totalContentH + pad;
+
+  const out = document.createElement('canvas');
+  out.width = totalW;
+  out.height = totalH;
+  const ctx = out.getContext('2d');
+
+  // 배경
+  ctx.fillStyle = '#f7f8fb';
+  ctx.fillRect(0, 0, totalW, totalH);
+
+  // 상단 헤더 (학생 정보)
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, totalW, headerH);
+  // 헤더 하단 구분선
+  ctx.fillStyle = '#e2e6ee';
+  ctx.fillRect(0, headerH - 1, totalW, 1);
+  // 강조 띠
+  const grad = ctx.createLinearGradient(0, 0, totalW, 0);
+  grad.addColorStop(0, '#5b6af5');
+  grad.addColorStop(0.5, '#f59e0b');
+  grad.addColorStop(1, '#10b981');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, totalW, 4 * scale);
+
+  // 제목
+  ctx.fillStyle = '#1e2230';
+  ctx.font = `bold ${20 * scale}px 'Noto Sans KR', sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('경사하강법으로 추세선 찾기', pad, 18 * scale);
+
+  // 학생 정보 (우측)
+  ctx.font = `${13 * scale}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = '#5a6478';
+  ctx.textAlign = 'right';
+  const dateStr = new Date().toLocaleDateString('ko-KR');
+  ctx.fillText(dateStr, totalW - pad, 18 * scale);
+
+  ctx.font = `600 ${15 * scale}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = '#1e2230';
+  ctx.fillText(`${studentInfo.name}  ·  ${studentInfo.id}`, totalW - pad, 42 * scale);
+
+  // 각 탭 그리기
+  let y = headerH + pad;
+  tabCanvases.forEach((cnv, i) => {
+    // 탭 라벨
+    ctx.fillStyle = '#eef1f8';
+    ctx.fillRect(pad, y, maxW, labelH);
+    // 좌측 강조 막대
+    ctx.fillStyle = '#5b6af5';
+    ctx.fillRect(pad, y, 4 * scale, labelH);
+    ctx.fillStyle = '#1e2230';
+    ctx.font = `bold ${13 * scale}px 'Noto Sans KR', sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tabLabels[i], pad + 16 * scale, y + labelH / 2);
+    y += labelH;
+
+    // 캡처 이미지 (좌측 정렬)
+    ctx.drawImage(cnv, pad, y);
+    y += cnv.height + gap;
+  });
+
+  return out;
+}
+
+function downloadCanvas(canvas, filename) {
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function safeName(s) {
+  return (s || '').replace(/[\\/:*?"<>|]/g, '').trim() || '학생';
+}
+
+// 현재 탭만 저장
+async function saveCurrentTab() {
+  const cnv = await captureTabCanvas(activeTab);
+  const composite = buildCompositeImage([cnv], [TAB_NAMES[activeTab]]);
+  downloadCanvas(composite, `경사하강법_${safeName(studentInfo.id)}_${safeName(studentInfo.name)}_${TAB_NAMES[activeTab].replace(/[. ]/g,'')}.png`);
+}
+
+// 4탭 전체를 한 장의 이미지로
+async function saveAllTabs() {
+  const btn = document.getElementById('save-all-btn');
+  btn.disabled = true;
+  btn.textContent = '이미지 생성 중...';
+  try {
+    const canvases = [];
+    for (let i = 0; i < 4; i++) {
+      canvases.push(await captureTabCanvas(i));
+    }
+    const composite = buildCompositeImage(canvases, TAB_NAMES);
+    downloadCanvas(composite, `경사하강법_${safeName(studentInfo.id)}_${safeName(studentInfo.name)}_전체.png`);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '⬇ 전체 저장';
+  }
+}
+
+// ─────────────────────────────────────────────
+//  인트로 모달
+// ─────────────────────────────────────────────
+document.getElementById('intro-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const id = document.getElementById('student-id').value.trim();
+  const name = document.getElementById('student-name').value.trim();
+  if (!id || !name) return;
+  studentInfo = { id, name };
+  document.getElementById('badge-id').textContent = id;
+  document.getElementById('badge-name').textContent = name;
+  document.getElementById('student-badge').style.display = 'flex';
+  document.getElementById('intro-overlay').classList.add('hidden');
+  // 인트로 해제 후 캔버스 재렌더 (숨김 상태였을 수 있으므로)
+  drawScatter();
+});
+
+// ─────────────────────────────────────────────
+//  resize
+// ─────────────────────────────────────────────
+window.addEventListener('resize',()=>{
+  if(resizeRafId) cancelAnimationFrame(resizeRafId);
+  resizeRafId=requestAnimationFrame(()=>{
+    if(activeTab===0) drawScatter();
+    if(activeTab===1) drawLossChart();
+    if(activeTab===2) drawGDGraph();
+    if(activeTab===3) drawFinalChart();
+  });
+});
+
+// ─────────────────────────────────────────────
+//  초기화
+// ─────────────────────────────────────────────
+drawScatter();
+</script>
+</body>
+</html>
