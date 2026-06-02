@@ -1211,14 +1211,29 @@ async function captureTabCanvas(tabIdx) {
     if (tabIdx === 3) { finalUserSet ? drawFinalChart() : finalUseOptimal(); }
     await new Promise(r => setTimeout(r, 150));
   }
-  // 학생이 작성한 글이 길어 박스를 넘쳐도 전부 캡처되도록 textarea를 내용 높이만큼 임시 확장
+  // html2canvas는 textarea의 자동 줄바꿈을 제대로 렌더링하지 못한다.
+  // 캡처 동안 각 textarea를 동일한 스타일의 div로 임시 교체해, 작성한 글이 줄바꿈까지 전부 보이게 한다.
   const textareas = section.querySelectorAll('textarea');
-  const saved = [];
+  const swaps = [];
   textareas.forEach(ta => {
-    saved.push({ ta, height: ta.style.height, overflow: ta.style.overflow });
-    ta.style.overflow = 'hidden';
-    ta.style.height = 'auto';
-    ta.style.height = (ta.scrollHeight + 4) + 'px';
+    const cs = getComputedStyle(ta);
+    const div = document.createElement('div');
+    div.textContent = ta.value;
+    ['fontFamily','fontSize','fontWeight','lineHeight','letterSpacing',
+     'paddingTop','paddingRight','paddingBottom','paddingLeft',
+     'borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth',
+     'borderStyle','borderColor','borderRadius','backgroundColor','color',
+     'marginTop','marginRight','marginBottom','marginLeft'].forEach(p => { div.style[p] = cs[p]; });
+    div.style.boxSizing = 'border-box';
+    div.style.width = ta.offsetWidth + 'px';
+    div.style.minHeight = ta.offsetHeight + 'px';
+    div.style.whiteSpace = 'pre-wrap';
+    div.style.overflowWrap = 'break-word';
+    div.style.wordBreak = 'break-word';
+    div.style.display = 'block';
+    ta.parentNode.insertBefore(div, ta);
+    ta.style.display = 'none';
+    swaps.push({ ta, div });
   });
   await new Promise(r => setTimeout(r, 30));
   const canvas = await html2canvas(section, {
@@ -1227,11 +1242,8 @@ async function captureTabCanvas(tabIdx) {
     useCORS: true,
     logging: false
   });
-  // 원래 크기로 복구
-  saved.forEach(({ ta, height, overflow }) => {
-    ta.style.height = height;
-    ta.style.overflow = overflow;
-  });
+  // textarea 원상 복구
+  swaps.forEach(({ ta, div }) => { div.remove(); ta.style.display = ''; });
   if (wasHidden) section.classList.remove('active');
   return canvas;
 }
